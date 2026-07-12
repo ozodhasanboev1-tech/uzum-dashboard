@@ -17,10 +17,10 @@ import hmac
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy import text
 from pydantic import BaseModel
@@ -37,6 +37,14 @@ AUTH_TOKEN = os.environ.get("DASHBOARD_TOKEN", "static-dev-token-please-change")
 SYNC_INTERVAL_MINUTES = int(os.environ.get("SYNC_INTERVAL_MINUTES", "30"))
 
 app = FastAPI(title="Uzum Plus - shaxsiy dashboard API")
+@app.exception_handler(Exception)
+async def debug_exception_handler(request: Request, exc: Exception):
+    import traceback
+    logger.exception("Unhandled error on %s", request.url)
+    return JSONResponse(status_code=500, content={
+        "error": str(exc),
+        "traceback": traceback.format_exc(),
+    })
 
 app.add_middleware(
     CORSMiddleware,
