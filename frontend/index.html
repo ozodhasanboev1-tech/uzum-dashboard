@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mening Uzum Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#161d2e; --panel2:#1d2538; --border:#2a3350;
+    --text:#e7ebf5; --muted:#8b93a7; --accent:#4f8cff; --green:#33c26f;
+    --red:#ef5757; --yellow:#e8b93b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  #login{display:flex;align-items:center;justify-content:center;height:100vh}
+  #login .box{background:var(--panel);padding:32px;border-radius:12px;width:300px;border:1px solid var(--border)}
+  #login input{width:100%;padding:10px;margin:10px 0;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--text)}
+  #login button, .btn{background:var(--accent);color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600}
+  #login .err{color:var(--red);font-size:13px;min-height:18px}
+  #app{display:none;min-height:100vh}
+  .layout{display:flex;min-height:100vh}
+  .sidebar{width:220px;background:var(--panel);border-right:1px solid var(--border);padding:16px 0;flex-shrink:0}
+  .sidebar h1{font-size:16px;padding:0 16px 16px;margin:0;color:var(--accent)}
+  .nav-item{padding:10px 16px;cursor:pointer;color:var(--muted);font-size:14px}
+  .nav-item:hover{background:var(--panel2)}
+  .nav-item.active{color:var(--text);background:var(--panel2);border-right:3px solid var(--accent)}
+  .main{flex:1;padding:20px;overflow-x:auto}
+  .topbar{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+  .topbar input, .topbar select{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .card .label{color:var(--muted);font-size:12px;text-transform:uppercase}
+  .card .value{font-size:22px;font-weight:700;margin-top:6px}
+  .card.green .value{color:var(--green)}
+  .card.red .value{color:var(--red)}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px}
+  .panel h3{margin-top:0}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px;text-align:left;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600}
+  .section{display:none}
+  .section.active{display:block}
+  canvas{max-height:320px}
+  .cost-input{width:110px;background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px}
+  .save-msg{color:var(--green);font-size:12px}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="box">
+    <h2>Kirish</h2>
+    <input id="pw" type="password" placeholder="Parol" />
+    <button onclick="doLogin()">Kirish</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="layout">
+    <div class="sidebar">
+      <h1>Uzum Dashboard</h1>
+      <div class="nav-item active" data-tab="home">Bosh sahifa</div>
+      <div class="nav-item" data-tab="hourly">Soatlik savdo</div>
+      <div class="nav-item" data-tab="salesstock">Savdo va qoldiqlar</div>
+      <div class="nav-item" data-tab="expenses">Xarajatlar</div>
+      <div class="nav-item" data-tab="costs">Tannarx</div>
+      <div class="nav-item" data-tab="shops">Do'konlar</div>
+    </div>
+    <div class="main">
+      <div class="topbar">
+        <label>Dan: <input type="date" id="dateFrom"/></label>
+        <label>Gacha: <input type="date" id="dateTo"/></label>
+        <button class="btn" onclick="refreshAll()">Yangilash</button>
+        <button class="btn" style="background:#333c58" onclick="manualSync()">Sync qilish</button>
+      </div>
+
+      <div class="section active" id="tab-home">
+        <div class="cards" id="homeCards"></div>
+        <div class="panel"><h3>Xarajatlar (kategoriya bo'yicha)</h3><canvas id="expChart"></canvas></div>
+        <div class="panel"><h3>Ombordagi qoldiq (FBO/FBS)</h3><div id="stockTable"></div></div>
+      </div>
+
+      <div class="section" id="tab-hourly">
+        <div class="panel">
+          <h3>Soatlik buyurtmalar</h3>
+          <label>Sana: <input type="date" id="hourlyDate"/></label>
+          <button class="btn" onclick="loadHourly()">Ko'rsat</button>
+          <canvas id="hourlyChart"></canvas>
+        </div>
+      </div>
+
+      <div class="section" id="tab-salesstock">
+        <div class="panel">
+          <h3>Mahsulot bo'yicha savdo va sof foyda</h3>
+          <div id="salesStockTable"></div>
+        </div>
+      </div>
+
+      <div class="section" id="tab-expenses">
+        <div class="panel">
+          <h3>Xarajat/daromad jurnali</h3>
+          <div id="expensesTable"></div>
+        </div>
+      </div>
+
+      <div class="section" id="tab-costs">
+        <div class="panel">
+          <h3>Mahsulot tannarxi (sebestoimost)</h3>
+          <p style="color:var(--muted);font-size:13px">Har mahsulot uchun tannarxni kiriting - shu qiymat sof foyda hisobida ishlatiladi.</p>
+          <div id="costsTable"></div>
+        </div>
+      </div>
+
+      <div class="section" id="tab-shops">
+        <div class="panel">
+          <h3>Do'konlar (Uzum API tokenlari)</h3>
+          <div id="shopsTable"></div>
+          <h4>Yangi do'kon qo'shish</h4>
+          <input id="shopName" placeholder="Do'kon nomi" />
+          <input id="shopUzumId" placeholder="Uzum shop ID" />
+          <input id="shopToken" placeholder="API token" style="width:340px" />
+          <button class="btn" onclick="addShop()">Qo'shish</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = ""; // bo'sh - frontend backend bilan bir joyda serve qilinadi
+let TOKEN = localStorage.getItem("token") || "";
+
+function fmt(n){ return Number(n||0).toLocaleString("ru-RU"); }
+
+async function api(path, opts={}){
+  opts.headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{}, {"Authorization": "Bearer " + TOKEN});
+  const res = await fetch(API + path, opts);
+  if(res.status === 401){ logout(); throw new Error("401"); }
+  if(!res.ok){ throw new Error(await res.text()); }
+  return res.status === 204 ? null : res.json();
+}
+
+function logout(){ localStorage.removeItem("token"); location.reload(); }
+
+async function doLogin(){
+  const pw = document.getElementById("pw").value;
+  try{
+    const r = await fetch(API + "/api/auth/login", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({password: pw})});
+    if(!r.ok){ document.getElementById("loginErr").innerText = "Parol noto'g'ri"; return; }
+    const data = await r.json();
+    TOKEN = data.token;
+    localStorage.setItem("token", TOKEN);
+    showApp();
+  }catch(e){ document.getElementById("loginErr").innerText = "Xatolik: " + e.message; }
+}
+
+function showApp(){
+  document.getElementById("login").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  const today = new Date();
+  const monthAgo = new Date(); monthAgo.setDate(1);
+  document.getElementById("dateFrom").value = monthAgo.toISOString().slice(0,10);
+  document.getElementById("dateTo").value = today.toISOString().slice(0,10);
+  document.getElementById("hourlyDate").value = today.toISOString().slice(0,10);
+  refreshAll();
+}
+
+document.querySelectorAll(".nav-item").forEach(el=>{
+  el.addEventListener("click", ()=>{
+    document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+    document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+    el.classList.add("active");
+    document.getElementById("tab-"+el.dataset.tab).classList.add("active");
+  });
+});
+
+let expChartInstance=null, hourlyChartInstance=null;
+
+async function refreshAll(){
+  const df = document.getElementById("dateFrom").value;
+  const dt = document.getElementById("dateTo").value;
+  await loadHome(df, dt);
+  await loadSalesStock(df, dt);
+  await loadExpenses(df, dt);
+  await loadCosts();
+  await loadShops();
+}
+
+async function loadHome(df, dt){
+  const s = await api(`/api/summary?date_from=${df}&date_to=${dt}`);
+  const cards = [
+    {label:"Tushum", value: fmt(s.revenue), cls:""},
+    {label:"To'lanadigan summa", value: fmt(s.payout), cls:""},
+    {label:"Sof foyda", value: fmt(s.net_profit), cls: s.net_profit>=0?"green":"red"},
+    {label:"Jami buyurtma", value: s.total_orders, cls:""},
+    {label:"Bekor qilingan", value: s.cancelled_orders, cls:"red"},
+  ];
+  document.getElementById("homeCards").innerHTML = cards.map(c=>`
+    <div class="card ${c.cls}"><div class="label">${c.label}</div><div class="value">${c.value}</div></div>
+  `).join("");
+
+  const ctx = document.getElementById("expChart");
+  if(expChartInstance) expChartInstance.destroy();
+  expChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: s.expenses_by_category.map(e=>e.category||"Boshqa"),
+      datasets: [{label:"Xarajat", data: s.expenses_by_category.map(e=>e.amount), backgroundColor:"#4f8cff"}]
+    },
+    options: {responsive:true, plugins:{legend:{display:false}}}
+  });
+
+  document.getElementById("stockTable").innerHTML = `
+    <table><tr><th>Turi</th><th>Kol-vo</th><th>Tannarx summasi</th></tr>
+    ${s.stock_by_type.map(r=>`<tr><td>${r.type||"-"}</td><td>${fmt(r.qty)}</td><td>${fmt(r.cost)}</td></tr>`).join("")}
+    </table>`;
+}
+
+async function loadHourly(){
+  const d = document.getElementById("hourlyDate").value;
+  const rows = await api(`/api/hourly?date=${d}`);
+  const hours = Array.from({length:24}, (_,i)=>i);
+  const counts = hours.map(h => (rows.find(r=>r.hour===h)||{count:0}).count);
+  const ctx = document.getElementById("hourlyChart");
+  if(hourlyChartInstance) hourlyChartInstance.destroy();
+  hourlyChartInstance = new Chart(ctx, {
+    type:"bar",
+    data:{ labels: hours.map(h=>String(h).padStart(2,"0")+":00"), datasets:[{label:"Buyurtmalar", data: counts, backgroundColor:"#4f8cff"}]},
+    options:{responsive:true, plugins:{legend:{display:false}}}
+  });
+}
+
+async function loadSalesStock(df, dt){
+  const rows = await api(`/api/sales-stock?date_from=${df}&date_to=${dt}`);
+  document.getElementById("salesStockTable").innerHTML = `
+    <table><tr><th>Mahsulot</th><th>SKU</th><th>Sotildi</th><th>Tushum</th><th>To'lanadigan</th><th>Sof foyda</th></tr>
+    ${rows.map(r=>`<tr><td>${r.title||"-"}</td><td>${r.sku_code||"-"}</td><td>${fmt(r.sold)}</td><td>${fmt(r.revenue)}</td><td>${fmt(r.payout)}</td><td style="color:${r.net_profit>=0?'var(--green)':'var(--red)'}">${fmt(r.net_profit)}</td></tr>`).join("")}
+    </table>`;
+}
+
+async function loadExpenses(df, dt){
+  const rows = await api(`/api/expenses?date_from=${df}&date_to=${dt}`);
+  document.getElementById("expensesTable").innerHTML = `
+    <table><tr><th>Sana</th><th>Kategoriya</th><th>Tur</th><th>Tavsif</th><th>Summa</th></tr>
+    ${rows.map(r=>`<tr><td>${(r.expense_date||"").slice(0,10)}</td><td>${r.category||"-"}</td><td>${r.type||"-"}</td><td>${r.description||"-"}</td><td>${fmt(r.amount)}</td></tr>`).join("")}
+    </table>`;
+}
+
+async function loadCosts(){
+  const rows = await api(`/api/costs`);
+  document.getElementById("costsTable").innerHTML = `
+    <table><tr><th>Mahsulot</th><th>SKU</th><th>Tannarx</th><th></th></tr>
+    ${rows.map(r=>`<tr>
+      <td>${r.title||"-"}</td><td>${r.sku_code||"-"}</td>
+      <td><input class="cost-input" type="number" id="cost-${r.product_id}" value="${r.cost_price}"/></td>
+      <td><button class="btn" onclick="saveCost(${r.product_id})">Saqlash</button> <span class="save-msg" id="msg-${r.product_id}"></span></td>
+    </tr>`).join("")}
+    </table>`;
+}
+
+async function saveCost(productId){
+  const val = document.getElementById(`cost-${productId}`).value;
+  await api(`/api/costs/${productId}`, {method:"PUT", body: JSON.stringify({cost_price: Number(val)})});
+  document.getElementById(`msg-${productId}`).innerText = "Saqlandi ✓";
+}
+
+async function loadShops(){
+  const rows = await api(`/api/shops`);
+  document.getElementById("shopsTable").innerHTML = `
+    <table><tr><th>Nomi</th><th>Uzum shop ID</th><th>Faol</th></tr>
+    ${rows.map(r=>`<tr><td>${r.name}</td><td>${r.uzum_shop_id}</td><td>${r.is_active?"Ha":"Yo'q"}</td></tr>`).join("")}
+    </table>`;
+}
+
+async function addShop(){
+  const name = document.getElementById("shopName").value;
+  const uzumId = Number(document.getElementById("shopUzumId").value);
+  const token = document.getElementById("shopToken").value;
+  await api(`/api/shops`, {method:"POST", body: JSON.stringify({name, uzum_shop_id: uzumId, api_token: token})});
+  await loadShops();
+}
+
+async function manualSync(){
+  await api(`/api/sync/run`, {method:"POST"});
+  alert("Sync boshlandi. Bir necha daqiqadan so'ng ma'lumotlar yangilanadi.");
+}
+
+if(TOKEN){ showApp(); }
+</script>
+</body>
+</html>
