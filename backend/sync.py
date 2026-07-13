@@ -165,8 +165,9 @@ def sync_stocks(conn, shop: dict):
     shuning uchun uzum_sku_id orqali bog'laymiz (ishonchliroq)."""
     client = UzumClient(shop["api_token"])
     page = 0
+    PAGE_SIZE = 100  # API "illegal-argument" beradi agar size > 100 bo'lsa
     while True:
-        data = client.get_fbs_stocks(shop["uzum_shop_id"], page=page, size=200)
+        data = client.get_fbs_stocks(shop["uzum_shop_id"], page=page, size=PAGE_SIZE)
         items = (data.get("payload") or {}).get("skuAmountList") or []
         if not items:
             break
@@ -179,7 +180,7 @@ def sync_stocks(conn, shop: dict):
                 VALUES (:s, :p, 'FBS', :qty, :cost, now())
             """), {"s": shop["id"], "p": prod[0] if prod else None,
                     "qty": it.get("amount") or 0, "cost": 0})
-        if len(items) < 200:
+        if len(items) < PAGE_SIZE:
             break
         page += 1
     _log(conn, shop["id"], "stocks", "OK")
