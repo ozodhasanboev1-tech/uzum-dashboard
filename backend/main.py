@@ -37,6 +37,8 @@ AUTH_TOKEN = os.environ.get("DASHBOARD_TOKEN", "static-dev-token-please-change")
 SYNC_INTERVAL_MINUTES = int(os.environ.get("SYNC_INTERVAL_MINUTES", "30"))
 
 app = FastAPI(title="Uzum Plus - shaxsiy dashboard API")
+
+
 @app.exception_handler(Exception)
 async def debug_exception_handler(request: Request, exc: Exception):
     import traceback
@@ -154,10 +156,40 @@ def update_cost(product_id: int, body: CostBody):
 
 
 # ---------------- Manual sync trigger ----------------
+# sync_all() bir necha daqiqa davom etadi (5 do'kon x bir nechta Uzum endpoint).
+# Uni to'g'ridan-to'g'ri (synchronous) chaqirsak, FastAPI'ning yagona ishchi jarayoni
+# butunlay band bo'lib qoladi - shu vaqt ichida login ham, boshqa hech narsa ham
+# ishlamay qoladi. Shuning uchun fon oqimida (background thread) ishga tushiramiz.
+import threading
+
+_sync_state = {"running": False, "last_finished_at": None, "last_error": None}
+
+
+def _run_sync_background():
+    _sync_state["running"] = True
+    _sync_state["last_error"] = None
+    try:
+        sync_module.sync_all()
+    except Exception as e:
+        logger.exception("Fon sync xatosi")
+        _sync_state["last_error"] = str(e)
+    finally:
+        _sync_state["running"] = False
+        _sync_state["last_finished_at"] = datetime.now(timezone.utc).isoformat()
+
+
 @app.post("/api/sync/run", dependencies=[Depends(require_auth)])
 def run_sync_now():
-    sync_module.sync_all()
-    return {"ok": True}
+    if _sync_state["running"]:
+        return {"ok": True, "already_running": True}
+    t = threading.Thread(target=_run_sync_background, daemon=True)
+    t.start()
+    return {"ok": True, "started": True}
+
+
+@app.get("/api/sync/status", dependencies=[Depends(require_auth)])
+def sync_status():
+    return _sync_state
 
 
 # ---------------- Scheduler ----------------
@@ -181,6 +213,9 @@ def on_shutdown():
 
 
 # ---------------- Frontend (statik fayllar) ----------------
+# Railway'da Root Directory "backend" ga o'rnatilgani uchun frontend fayllari
+# ham backend/frontend/ ichida bo'lishi kerak (repo ildizidagi frontend/ ga
+# Railway build konteksti yeta olmaydi).
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "frontend")
 if os.path.isdir(FRONTEND_DIR):
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
