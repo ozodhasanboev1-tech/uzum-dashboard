@@ -47,7 +47,7 @@
 </style>
 </head>
 <body>
-
+ 
 <div id="login">
   <div class="box">
     <h2>Kirish</h2>
@@ -56,7 +56,7 @@
     <div class="err" id="loginErr"></div>
   </div>
 </div>
-
+ 
 <div id="app">
   <div class="layout">
     <div class="sidebar">
@@ -75,13 +75,13 @@
         <button class="btn" onclick="refreshAll()">Yangilash</button>
         <button class="btn" style="background:#333c58" onclick="manualSync()">Sync qilish</button>
       </div>
-
+ 
       <div class="section active" id="tab-home">
         <div class="cards" id="homeCards"></div>
         <div class="panel"><h3>Xarajatlar (kategoriya bo'yicha)</h3><canvas id="expChart"></canvas></div>
         <div class="panel"><h3>Ombordagi qoldiq (FBO/FBS)</h3><div id="stockTable"></div></div>
       </div>
-
+ 
       <div class="section" id="tab-hourly">
         <div class="panel">
           <h3>Soatlik buyurtmalar</h3>
@@ -90,21 +90,21 @@
           <canvas id="hourlyChart"></canvas>
         </div>
       </div>
-
+ 
       <div class="section" id="tab-salesstock">
         <div class="panel">
           <h3>Mahsulot bo'yicha savdo va sof foyda</h3>
           <div id="salesStockTable"></div>
         </div>
       </div>
-
+ 
       <div class="section" id="tab-expenses">
         <div class="panel">
           <h3>Xarajat/daromad jurnali</h3>
           <div id="expensesTable"></div>
         </div>
       </div>
-
+ 
       <div class="section" id="tab-costs">
         <div class="panel">
           <h3>Mahsulot tannarxi (sebestoimost)</h3>
@@ -112,7 +112,7 @@
           <div id="costsTable"></div>
         </div>
       </div>
-
+ 
       <div class="section" id="tab-shops">
         <div class="panel">
           <h3>Do'konlar (Uzum API tokenlari)</h3>
@@ -127,13 +127,13 @@
     </div>
   </div>
 </div>
-
+ 
 <script>
 const API = ""; // bo'sh - frontend backend bilan bir joyda serve qilinadi
 let TOKEN = localStorage.getItem("token") || "";
-
+ 
 function fmt(n){ return Number(n||0).toLocaleString("ru-RU"); }
-
+ 
 async function api(path, opts={}){
   opts.headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{}, {"Authorization": "Bearer " + TOKEN});
   const res = await fetch(API + path, opts);
@@ -141,9 +141,9 @@ async function api(path, opts={}){
   if(!res.ok){ throw new Error(await res.text()); }
   return res.status === 204 ? null : res.json();
 }
-
+ 
 function logout(){ localStorage.removeItem("token"); location.reload(); }
-
+ 
 async function doLogin(){
   const pw = document.getElementById("pw").value;
   try{
@@ -155,7 +155,7 @@ async function doLogin(){
     showApp();
   }catch(e){ document.getElementById("loginErr").innerText = "Xatolik: " + e.message; }
 }
-
+ 
 function showApp(){
   document.getElementById("login").style.display = "none";
   document.getElementById("app").style.display = "block";
@@ -166,7 +166,7 @@ function showApp(){
   document.getElementById("hourlyDate").value = today.toISOString().slice(0,10);
   refreshAll();
 }
-
+ 
 document.querySelectorAll(".nav-item").forEach(el=>{
   el.addEventListener("click", ()=>{
     document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
@@ -175,9 +175,9 @@ document.querySelectorAll(".nav-item").forEach(el=>{
     document.getElementById("tab-"+el.dataset.tab).classList.add("active");
   });
 });
-
+ 
 let expChartInstance=null, hourlyChartInstance=null;
-
+ 
 async function refreshAll(){
   const df = document.getElementById("dateFrom").value;
   const dt = document.getElementById("dateTo").value;
@@ -187,7 +187,7 @@ async function refreshAll(){
   await loadCosts();
   await loadShops();
 }
-
+ 
 async function loadHome(df, dt){
   const s = await api(`/api/summary?date_from=${df}&date_to=${dt}`);
   const cards = [
@@ -200,7 +200,7 @@ async function loadHome(df, dt){
   document.getElementById("homeCards").innerHTML = cards.map(c=>`
     <div class="card ${c.cls}"><div class="label">${c.label}</div><div class="value">${c.value}</div></div>
   `).join("");
-
+ 
   const ctx = document.getElementById("expChart");
   if(expChartInstance) expChartInstance.destroy();
   expChartInstance = new Chart(ctx, {
@@ -211,13 +211,13 @@ async function loadHome(df, dt){
     },
     options: {responsive:true, plugins:{legend:{display:false}}}
   });
-
+ 
   document.getElementById("stockTable").innerHTML = `
     <table><tr><th>Turi</th><th>Kol-vo</th><th>Tannarx summasi</th></tr>
     ${s.stock_by_type.map(r=>`<tr><td>${r.type||"-"}</td><td>${fmt(r.qty)}</td><td>${fmt(r.cost)}</td></tr>`).join("")}
     </table>`;
 }
-
+ 
 async function loadHourly(){
   const d = document.getElementById("hourlyDate").value;
   const rows = await api(`/api/hourly?date=${d}`);
@@ -231,7 +231,7 @@ async function loadHourly(){
     options:{responsive:true, plugins:{legend:{display:false}}}
   });
 }
-
+ 
 async function loadSalesStock(df, dt){
   const rows = await api(`/api/sales-stock?date_from=${df}&date_to=${dt}`);
   document.getElementById("salesStockTable").innerHTML = `
@@ -239,7 +239,7 @@ async function loadSalesStock(df, dt){
     ${rows.map(r=>`<tr><td>${r.title||"-"}</td><td>${r.sku_code||"-"}</td><td>${fmt(r.sold)}</td><td>${fmt(r.revenue)}</td><td>${fmt(r.payout)}</td><td style="color:${r.net_profit>=0?'var(--green)':'var(--red)'}">${fmt(r.net_profit)}</td></tr>`).join("")}
     </table>`;
 }
-
+ 
 async function loadExpenses(df, dt){
   const rows = await api(`/api/expenses?date_from=${df}&date_to=${dt}`);
   document.getElementById("expensesTable").innerHTML = `
@@ -247,7 +247,7 @@ async function loadExpenses(df, dt){
     ${rows.map(r=>`<tr><td>${(r.expense_date||"").slice(0,10)}</td><td>${r.category||"-"}</td><td>${r.type||"-"}</td><td>${r.description||"-"}</td><td>${fmt(r.amount)}</td></tr>`).join("")}
     </table>`;
 }
-
+ 
 async function loadCosts(){
   const rows = await api(`/api/costs`);
   document.getElementById("costsTable").innerHTML = `
@@ -259,13 +259,13 @@ async function loadCosts(){
     </tr>`).join("")}
     </table>`;
 }
-
+ 
 async function saveCost(productId){
   const val = document.getElementById(`cost-${productId}`).value;
   await api(`/api/costs/${productId}`, {method:"PUT", body: JSON.stringify({cost_price: Number(val)})});
   document.getElementById(`msg-${productId}`).innerText = "Saqlandi ✓";
 }
-
+ 
 async function loadShops(){
   const rows = await api(`/api/shops`);
   document.getElementById("shopsTable").innerHTML = `
@@ -273,7 +273,7 @@ async function loadShops(){
     ${rows.map(r=>`<tr><td>${r.name}</td><td>${r.uzum_shop_id}</td><td>${r.is_active?"Ha":"Yo'q"}</td></tr>`).join("")}
     </table>`;
 }
-
+ 
 async function addShop(){
   const name = document.getElementById("shopName").value;
   const uzumId = Number(document.getElementById("shopUzumId").value);
@@ -281,12 +281,22 @@ async function addShop(){
   await api(`/api/shops`, {method:"POST", body: JSON.stringify({name, uzum_shop_id: uzumId, api_token: token})});
   await loadShops();
 }
-
+ 
 async function manualSync(){
-  await api(`/api/sync/run`, {method:"POST"});
-  alert("Sync boshlandi. Bir necha daqiqadan so'ng ma'lumotlar yangilanadi.");
+  const btn = event && event.target;
+  const oldText = btn ? btn.textContent : null;
+  if (btn) { btn.disabled = true; btn.textContent = "Sync ketmoqda..."; }
+  try {
+    await api(`/api/sync/run`, {method:"POST"});
+    alert("Sync tugadi. Sahifani yangilang.");
+    await refreshAll();
+  } catch (e) {
+    alert("Sync xatosi: " + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = oldText; }
+  }
 }
-
+ 
 if(TOKEN){ showApp(); }
 </script>
 </body>
