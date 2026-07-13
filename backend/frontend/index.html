@@ -284,17 +284,31 @@ async function addShop(){
 
 async function manualSync(){
   const btn = event && event.target;
-  const oldText = btn ? btn.textContent : null;
-  if (btn) { btn.disabled = true; btn.textContent = "Sync ketmoqda..."; }
+  const oldText = btn ? btn.textContent : "Sync qilish";
+  if (btn) { btn.disabled = true; }
   try {
     await api(`/api/sync/run`, {method:"POST"});
-    alert("Sync tugadi. Sahifani yangilang.");
-    await refreshAll();
   } catch (e) {
-    alert("Sync xatosi: " + e.message);
-  } finally {
     if (btn) { btn.disabled = false; btn.textContent = oldText; }
+    alert("Sync boshlanmadi: " + e.message);
+    return;
   }
+  // Fon jarayonini kuzatamiz (max 3 daqiqa)
+  for (let i = 0; i < 90; i++) {
+    if (btn) { btn.textContent = "Sync ketmoqda" + ".".repeat((i % 3) + 1); }
+    await new Promise(r => setTimeout(r, 2000));
+    let st;
+    try { st = await api(`/api/sync/status`); } catch (e) { break; }
+    if (!st.running) {
+      if (btn) { btn.textContent = oldText; btn.disabled = false; }
+      if (st.last_error) { alert("Sync xatosi: " + st.last_error); }
+      else { alert("Sync tugadi."); }
+      try { await refreshAll(); } catch (e) { console.error("refreshAll xatosi:", e); }
+      return;
+    }
+  }
+  if (btn) { btn.textContent = oldText; btn.disabled = false; }
+  alert("Sync hali tugamadi (fon rejimida davom etmoqda). Bir necha daqiqadan so'ng 'Yangilash' tugmasini bosing.");
 }
 
 if(TOKEN){ showApp(); }
