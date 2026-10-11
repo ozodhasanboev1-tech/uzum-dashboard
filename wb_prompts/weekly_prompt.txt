@@ -1,0 +1,42 @@
+Ozodbekning Uzum Market do'konlari uchun HAFTALIK hisobot (o'tgan dushanba–yakshanba) + Wildberries kabinetlari tayyorla: infografika rasmlari + Excel + qisqa tahlil, Telegram'ga yubor va Obsidian'ga saqla. Bu uning o'z do'konlari, o'z API kalitlari va o'z Telegram boti; u bu hisobotni so'ragan. Matnni qisqa tut — hisobotning asosiy qismi rasm va Excel'da.
+
+1. KALITLAR. Ular bulut muhitining ("Uzum") environment variables'ida: UZUM_ALOKOZAY, UZUM_SA_TIMSON, UZUM_CLEO, WB_ALOKOZAY, WB_CLEO, WB_NASIROV, TG_TOKEN, TG_CHAT. Qiymatlarni ekranga chiqarma (env, printenv, echo ishlatma), xatga/xabarga qo'shma. ~/uzum_key.txt ni aynan shu buyruq bilan yasa:
+   python3 -c "import os;V=[('ALOKOZAY','UZUM_ALOKOZAY'),('SA & Timson','UZUM_SA_TIMSON'),('CLEO','UZUM_CLEO'),('TG_TOKEN','TG_TOKEN'),('TG_CHAT','TG_CHAT')];ok=all(os.environ.get(v) for _,v in V);ok and open(os.path.expanduser('~/uzum_key.txt'),'w').write(''.join(f'{n}: {os.environ[v].strip()}\n' for n,v in V));print('KALITLAR:',ok)"
+   "KALITLAR: False" chiqsa — PushNotification bilan "Uzum hisobot: kalitlar muhitda topilmadi (routine muhiti Uzum emas)" deb yubor va to'xta.
+
+2. SKRIPT VA TANNARX (Google Drive'dan):
+   a) download_file_content fileId = 1mTwr8mj00O13gH3zBJmRhdKD9aWy8i9S (uzum_report.py v4, WB bilan), base64 dan dekod qilib ~/uzum_report.py ga yoz. Xato bo'lsa — push: "Uzum hisobot: uzum_report.py yuklanmadi" va to'xta.
+   b) Tannarx jadvali: download_file_content, fileId = 1SbSBX7vtWeEBO3-hs4CkxnMV_6JcMV0cr50-Z6f7WkE, exportMimeType = "text/csv". Dekod qilib ~/tannarx.csv ga yoz. Xato bo'lsa — davom et (skript Uzum'dagi tannarxni ishlatadi).
+   c) WB skript: download_file_content fileId = 1SQiY_BuW28R2_acCrg5c-yl57eF_AUQW (wb_report.py) -> base64 dan dekod qilib ~/wb_report.py ga yoz. O'ZGARTIRMA.
+   d) WB tannarx: download_file_content fileId = 1sHWgUQyJmwUkTB2nifmffUFqAvy-AcSV9ESFSR8jLBk, exportMimeType = "text/csv" -> dekod qilib ~/wb_tannarx.csv ga yoz.
+   (c, d da xato bo'lsa — davom et; hisobot WB'siz chiqadi va summary'da sababi yoziladi.)
+   Agar tool natijasi juda katta bo'lib faylga saqlansa, o'sha fayldan python bilan "content" maydonini olib dekod qil.
+   e) pip install requests pillow matplotlib openpyxl --break-system-packages -q
+
+3. HISOBOTNI YASA: python3 ~/uzum_report.py build weekly   (timeout 600000)
+   1-qator "OK {...}" bo'lishi kerak; keyingi qatorlar — qisqa xulosa (summary). Skript har WB kabinet uchun alohida bo'lim (aniq realizatsiya: sotuv, komissiya, logistika, saqlash, obrabotka, jarima, ushlab qolish, yakuniy to'lov, tannarx, foyda — har tovar bo'yicha), zararga sotilganlar ro'yxati, jarimalar sababi bilan va "Barcha marketplace'lar jami" ni qo'shadi (rasmlar, Excel "Wildberries" varag'i, ~/out/wb.txt). WB xato bersa Uzum qismi baribir tayyorlanadi. ~/out/ papkasida: 01_umumiy.png, do'kon rasmlari, Excel, summary.txt, cards.json, report.md, meta.json.
+
+4. TAHLIL (sen — Uzum Market bo'yicha tajribali marketolog va moliyaviy tahlilchi). ~/out/cards.json ni o'qi: "cards" (har do'kondan 3 ta Kuchli va 3 ta Zaif kartochka: savdo, oldingi davr savdosi, ko'rishlar, konversiya, reyting, vozvrat %, qoldiq, eng ko'p ketgan variantlar), "price_alerts" (zararga yoki juda kam foydaga sotilayotgan SKU'lar), "shops" (do'kon jami ko'rsatkichlari), "wb" (WB kabinetlari: totals, loss_items — zararga sotilgan tovarlar, penalties — jarima/ushlab qolish sababi bilan, combined — Uzum+WB jami).
+   Har bir Zaif kartochkaning asosiy rasmini (image) yuklab o'zing Read bilan ko'r — tavsiya rasmga ham tayansin.
+   ~/out/advice.json ni yoz (UTF-8, faqat shu tuzilma):
+   {
+    "items": [ {"shop": "...", "type": "Kuchli" yoki "Zaif" yoki "Narx", "title": "kartochka/SKU qisqa nomi", "metrics": "asosiy 2–3 raqam", "diagnosis": "1 jumla: muammo yoki kuch nimada", "actions": "1–2 aniq qadam", "url": "..."} ],
+    "summary": "2–3 jumla: hafta umumiy xulosasi va eng muhim 1 ish",
+    "telegram": "Telegram uchun qisqa matn, 8–12 qator, har qator emoji bilan boshlansin"
+   }
+   Qoidalar:
+   - Kuchli: nima uchun yaxshi ketyapti va o'sishni qanday ushlab qolish (zaxira, reklama, narx).
+   - Zaif: tashxis — ko'rish kam bo'lsa ko'rinish (sarlavha/SEO, kategoriya, reklama); ko'rish bor-u konversiya past bo'lsa — rasm, narx, sharhlar; vozvrat 15%+ bo'lsa — tavsif/sifat/qadoq. Aniq qadam yoz (masalan, 1-rasmga qanday yozuv, qanday narx sinovi).
+   - Narx: price_alerts dagi eng muhim 3–5 SKU uchun "type":"Narx" — qancha zarar/foyda, narxni qanchaga ko'tarish yoki tannarxni tekshirish kerakligi (tannarx Uzum'dagi xarid narxidan olingan bo'lishi mumkin — shuni eslat).
+   - Telegram matni: 1) haftaning asosiy xulosasi 1 qator; 2) ✅ 2–3 ta kuchli; 3) ⚠️ 2–3 ta zaif/narx muammosi; 4) 👉 shu hafta qilinadigan 2–3 ish. Uzun gap yozma.
+   - WB: loss_items va penalties dan eng muhim 2–3 tasini "shop": "WB <kabinet>", "type": "Narx" yoki "Zaif" qilib yoz (zarar sababi: logistika/obrabotka ulushi, tannarx, jarima). Telegram matnida WB uchun 1–2 qator bo'lsin.
+   - Faqat cards.json dagi raqamlar va o'zing ko'rgan rasmlarga tayan. Raqam o'ylab topma.
+
+5. YETKAZ: python3 ~/uzum_report.py deliver
+   - Natija "TELEGRAM: yuborildi" bilan boshlansa — tayyor, Gmail'ga YUBORMA.
+   - Aks holda Gmail send_message: to = ozodhasanboev1@gmail.com, subject = "Uzum haftalik hisobot — " + ~/out/meta.json dagi "lab", body = ~/out/summary.txt + bo'sh qator + advice.json dagi "telegram" matni (oddiy matn), attachments = ~/out/ dagi Excel fayl (base64) va 01_umumiy.png (base64).
+
+6. OBSIDIAN: ~/out/report.md matnini Google Drive create_file bilan saqla — parentId = 1_vBZtHJq-1X7cceorQ171HvdoLUu13qg, title = "<meta.json dagi tag> Uzum haftalik.md", textContent = fayl matni, contentMimeType = "text/markdown", disableConversionToGoogleType = true.
+
+7. PushNotification va yakuniy javob: ~/out/summary.txt matni (o'zgarishsiz). Telegram ishlamagan bo'lsa oxiriga: "Telegram ishlamadi — Gmail'ga yuborildi". Biror do'kon yoki WB kabineti xato bersa (meta.json "errors"), pushda ayt.
+Skriptni o'zgartirma. Uzum/WB API'ga skriptdan tashqari so'rov yuborma.
